@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-app
+spec:
+  replicas: 3 # Create 3 pods for maximum availability
+  selector:
+    matchLabels:
+      app: consumer-app
+  template:
+    metadata:
+      labels:
+        app: consumer-app
+    spec:
+      containers:
+        - name: consumer-app
+          image: consumer-app:latest
+          env:
+            - name: KAFKA_BROKER
+              value: kafka-service.default' #Connect to kafka default domain
+            - name: NEO4J_HOST
+              value: neo4j-service.default' #Connect to jeo4j default domain
+            - name: ELASTICSEARCH_HOST
+              value: elasticsearch-service.default' #Connect to elasticsearch default domain
+
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox
+          command: ['sh', '-c', 'until nc -z kafka 9092; do echo waiting for kafka; sleep 2; done;']
+        - name: wait-for-elasticsearch
+          image: busybox
+          command: ['sh', '-c', 'until nc -z elasticsearch 9200; do echo waiting for elasticsearch; sleep 2; done;']
+        - name: wait-for-neo4j
+          image: busybox
+          command: ['sh', '-c', 'until nc -z neo4j 7687; do echo waiting for neo4j; sleep 2; done;']
+      
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: consumer-service
+spec:
+  selector:
+    app: consumer-app
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 80
